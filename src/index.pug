@@ -1,0 +1,402 @@
+doctype html
+html(lang="en")
+	head
+		meta(charset="UTF-8")
+		meta(name="viewport" content="width=device-width, initial-scale=1.0")
+		title Heron AI | Works inside your design tools — Interactive Motion Simulation
+		// Google Fonts: Plus Jakarta Sans & Geist Mono / Space Mono
+		link(rel="preconnect" href="https://fonts.googleapis.com")
+		link(rel="preconnect" href="https://fonts.gstatic.com" crossorigin)
+		link(href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet")
+		// External CDNs
+		script(src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js")
+		script(src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js")
+		script(src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js")
+		script(src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js")
+		script(src="https://cdn.jsdelivr.net/npm/lil-gui@0.19")
+		link(rel="stylesheet" href="./style.css")
+	body.body
+		//- Custom Cursor
+		.cursor-wrapper
+			.cursor-dot
+			.cursor-crosshair
+				.cursor-cross-h
+				.cursor-cross-v
+
+		//- Background Noise / Grid Overlay
+		.bg-noise-overlay
+
+		//- SVG Displacement Filters for Organic Ink Reveal
+		svg.svg-filters(width="0" height="0" style="position: absolute;")
+			defs
+				filter#sharedDisplacementFilter
+					feTurbulence(type="fractalNoise" baseFrequency="0.045 0.055" numOctaves="4" seed="5" result="noise")
+					feDisplacementMap(in="SourceGraphic" in2="noise" scale="100" xChannelSelector="R" yChannelSelector="G")
+					feGaussianBlur(stdDeviation="1.8" result="blurred")
+					feComponentTransfer(in="blurred" result="contrast")
+						feFuncA(type="linear" slope="2.2" intercept="-0.6")
+
+		//- Floating Header Navigation
+		header.header
+			.header-inner
+				.header-line-bot
+				.container.header-container
+					.header-logo-group
+						a.header-logo(href="#hero")
+							.logo-icon
+								svg(viewBox="0 0 34 39" fill="none" xmlns="http://www.w3.org/2000/svg")
+									path(d="M1.3053 28.1935L6.3863 31.0856L11.7671 34.2717L16.0538 36.7537V19.7481L11.1075 16.8844L5.73719 13.7849L1.3053 11.2187V28.1935ZM28.0021 13.5958V19.7127L21.3258 23.5785V17.4515L17.3591 19.7481V36.7537L21.3258 34.4571V28.1935L28.0021 24.3937V30.5303L32.1077 28.1935V11.2187L28.0021 13.5958ZM23.2939 28.575L26.6968 30.5263V26.6383L23.2939 28.575ZM22.6311 21.3143L26.032 19.345L22.6311 17.4346V21.3143ZM1.95328 10.0855L6.39055 12.6548L11.7609 15.7543L16.7065 18.6178L20.6833 16.3152L16.3756 13.7822L11.1048 10.6498L6.0621 7.69769L1.95328 10.0855ZM12.0377 9.68567L17.0372 12.657L22.3003 15.7517L26.6968 18.2211V13.5944L21.6509 10.6512L16.3792 7.59458L12.0377 4.99998V9.68567ZM12.6703 3.85756L17.039 6.4683L22.3057 9.52208L27.3506 12.4645L31.4457 10.0936L27.0285 7.59812L21.6492 4.45709L16.7025 1.51421L12.6703 3.85756ZM33.413 28.9525L27.3483 32.4045L22.6311 29.6996V35.2096L16.7065 38.64L11.1048 35.3966L5.74059 32.2201L0 28.9525V9.71102L6.06464 6.18659L10.7323 8.91915V3.47415L16.7103 0L22.3121 3.33266L27.6706 6.46165L33.413 9.70578V28.9525Z" fill="currentColor")
+							span.logo-text HERON AI
+					nav.header-nav
+						a.nav-link(href="#intro")
+							span PRODUCT
+							span.nav-indicator
+						a.nav-link(href="#problem")
+							span PRICING
+						a.nav-link(href="#platform")
+							span PLATFORM
+						a.nav-link(href="#why")
+							span ABOUT
+						a.btn-fill.btn-primary(href="#contact")
+							span.btn-fill-bg
+							span.btn-fill-label
+								span.label-top CONTACT US
+								span.label-bot CONTACT US
+							span.btn-fill-icon
+								span.icon-top →
+								span.icon-bot →
+
+		//- Main Application Container
+		main.main-content#smooth-wrapper
+			//- SECTION 1: HERO (Architectural Blueprint + Interactive Violation Spotter)
+			section.home-hero#hero
+				.container
+					.home-hero-frame
+						//- Corner Crosshairs
+						.corner-cross.top-left +
+						.corner-cross.top-right +
+						.corner-cross.bot-left +
+						.corner-cross.bot-right +
+
+						//- Interactive Canvas Container
+						.hero-blueprint-area#heroCanvasArea
+							//- Cursor Hairline Guides (Follow Mouse)
+							.crosshair-line.line-h#cursorLineH
+							.crosshair-line.line-v#cursorLineV
+							.crosshair-tracker#cursorTracker
+								span.crosshair-plus +
+								.coordinate-badge
+									span X: 
+									span.coord-x#coordX 1301
+									span PX &nbsp;|&nbsp; Y: 
+									span.coord-y#coordY 876
+									span PX
+							
+							//- Architectural Blueprint Drawing
+							.blueprint-drawing
+								img.blueprint-img(src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a703ca7b25c47076637c631_4f993b1a199968429382e85294f3e6d1_Full.webp" alt="Heron AI Architectural Blueprint")
+
+							//- Violation 1: Handrails Required (IBC 1011.11)
+							.violation-marker.violation-1(style="left: 31%; top: 58%;")
+								.pulsing-dot
+								.violation-card
+									.violation-code IBC 1011.11
+									.violation-desc Handrails required.
+								//- Dynamic projection lines connecting to outer rulers
+								.proj-line.proj-h-left
+								.proj-line.proj-v-top
+								.proj-line.proj-v-bot
+
+							//- Violation 2: Guardrail Fall Protection (IBC 1015.3)
+							.violation-marker.violation-2(style="left: 63%; top: 62%;")
+								.pulsing-dot
+								.violation-card
+									.violation-code IBC 1015.3
+									.violation-desc Guardrail required for fall protection
+								//- Dynamic projection lines connecting to outer rulers
+								.proj-line.proj-h-right
+								.proj-line.proj-v-top
+								.proj-line.proj-v-bot
+
+							//- Top Ruler Scale
+							.ruler-scale.scale-top
+								.tick(style="left: 10%")
+								.tick(style="left: 20%")
+								.tick(style="left: 31%")
+								.tick(style="left: 45%")
+								.tick(style="left: 63%")
+								.tick(style="left: 80%")
+								.tick(style="left: 90%")
+							
+							//- Left Ruler Scale
+							.ruler-scale.scale-left
+								.tick(style="top: 15%")
+								.tick(style="top: 30%")
+								.tick(style="top: 58%")
+								.tick(style="top: 62%")
+								.tick(style="top: 85%")
+
+							//- Bottom Drag Callout Notice
+							.hero-drag-hint
+								span.hint-dot
+								span Click and drag your mouse to explore violations
+
+					//- Hero Bottom Editorial Content
+					.hero-footer-row
+						.hero-heading-block
+							h1.hero-title.mask-reveal
+								.line-wrap
+									span AN AI AGENT THAT WORKS
+								.line-wrap
+									span INSIDE YOUR DESIGN TOOLS
+						.hero-desc-block
+							p.hero-desc.mask-reveal
+								| Heron reviews your model, identifies issues, and proposes solutions. Upon approval, it edits automatically. Experience real-time building code compliance and automation natively.
+							.hero-cta-action
+								a.btn-fill.btn-brand(href="#platform")
+									span.btn-fill-bg
+									span.btn-fill-label
+										span.label-top DISCOVER MORE
+										span.label-bot DISCOVER MORE
+									span.btn-fill-icon
+										span.icon-top →
+										span.icon-bot →
+
+					//- Ticker Marquee of CAD integrations
+					.cad-marquee-section
+						.marquee-label WORKS SEAMLESSLY WITH
+						.marquee-track#cadMarquee
+							.marquee-content
+								.cad-item
+									span.cad-dot
+									span.cad-name AUTODESK REVIT
+								.cad-item
+									span.cad-dot
+									span.cad-name RHINOCEROS 3D
+								.cad-item
+									span.cad-dot
+									span.cad-name GRAPHISOFT ARCHICAD
+								.cad-item
+									span.cad-dot
+									span.cad-name TRIMBLE SKETCHUP
+								.cad-item
+									span.cad-dot
+									span.cad-name VECTORWORKS
+								.cad-item
+									span.cad-dot
+									span.cad-name BLENDER ARCH
+							//- Repeated content for smooth infinite marquee
+							.marquee-content(aria-hidden="true")
+								.cad-item
+									span.cad-dot
+									span.cad-name AUTODESK REVIT
+								.cad-item
+									span.cad-dot
+									span.cad-name RHINOCEROS 3D
+								.cad-item
+									span.cad-dot
+									span.cad-name GRAPHISOFT ARCHICAD
+								.cad-item
+									span.cad-dot
+									span.cad-name TRIMBLE SKETCHUP
+								.cad-item
+									span.cad-dot
+									span.cad-name VECTORWORKS
+								.cad-item
+									span.cad-dot
+									span.cad-name BLENDER ARCH
+
+			//- SECTION 2: INTRO & INK MASK REVEAL
+			section.home-intro#intro
+				.container
+					.intro-grid
+						.intro-left
+							.section-tag // 01 — SEAMLESS COMPLIANCE
+							h2.section-heading.mask-reveal
+								.line-wrap
+									span DESIGN FREELY.
+								.line-wrap
+									span HERON WATCHES
+								.line-wrap
+									span THE CODE.
+							p.intro-body-text
+								| Traditional code checking takes weeks of manual review, delays milestones, and forces painful redesigns. Heron sits directly beside you as a proactive copilot, flagging egress, fire ratings, clearances, and structural conflicts the instant you place an element.
+							.partner-row
+								.partner-label TRUSTED BY TOP GLOBAL DESIGN FIRMS
+								.partner-counter (45+ FIRMS IN PILOT)
+
+						.intro-right
+							//- Organic Ink Mask Reveal Container
+							.ink-mask-card#inkMaskContainer
+								.ink-mask-wrapper
+									//- Base Image
+									img.ink-img-base(src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a69a23dcc24456128e2afe3_image%20345.avif" alt="Interactive Model Review")
+									//- Overlay with SVG Morph Mask
+									.ink-mask-overlay
+										svg(width="100%" height="100%" preserveAspectRatio="none" class="ink-svg-layer")
+											defs
+												mask#inkMorphMask-1(maskContentUnits="userSpaceOnUse")
+													path.ink-path-morph(fill="white" style="filter: url(#sharedDisplacementFilter);" d="M 0 1 Q 500 2 1000 1 L 1000 0 L 0 0 Z")
+											g(mask="url(#inkMorphMask-1)")
+												image(href="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a66fd66235c9b3dc9658cce_b7a2ba681bb6f203cb6b6f354b9db94f_solution1.jpg" width="100%" height="100%" preserveAspectRatio="xMidYMid slice")
+								.ink-mask-badge
+									span.live-dot
+									span LIVE REVEAL SIMULATION
+
+			//- SECTION 3: THE PROBLEM & STICKY ACCORDION
+			section.home-problem#problem
+				.container
+					.problem-header
+						.section-tag // 02 — THE BOTTLENECK
+						h2.section-heading.mask-reveal
+							.line-wrap
+								span MANUAL REVIEWS KILL
+							.line-wrap
+								span DESIGN VELOCITY.
+					.problem-cards-grid
+						.problem-card.active(data-index="0")
+							.card-header
+								.card-num 01
+								.card-title FRAGMENTED CODE CHECKS
+								.card-toggle +
+							.card-body
+								p Building codes vary across state, city, and building type. Cross-referencing hundreds of pages of IBC, NFPA, and ADA guidelines leads to costly omissions and rework during permit review.
+								.card-tag-mono STATUS: HIGH LATENCY
+						.problem-card(data-index="1")
+							.card-header
+								.card-num 02
+								.card-title CONFLICTING DISCIPLINES
+								.card-toggle +
+							.card-body
+								p Mechanical, electrical, and structural systems constantly clash with architectural spatial goals. Catching clashes late forces emergency compromises that undermine design intent.
+								.card-tag-mono STATUS: 30% REWORK TIME
+						.problem-card(data-index="2")
+							.card-header
+								.card-num 03
+								.card-title DISCONNECTED TOOLS
+								.card-toggle +
+							.card-body
+								p Third-party analysis tools require clunky exports, IFC conversions, and external cloud platforms. By the time results arrive, your model has already progressed.
+								.card-tag-mono STATUS: BREAKS FLOW STATE
+
+			//- SECTION 4: PLATFORM TABBED SHOWCASE
+			section.home-platform#platform
+				.container
+					.platform-header
+						.section-tag // 03 — DUAL AGENT CAPABILITY
+						h2.section-heading.mask-reveal
+							.line-wrap
+								span CHAT AGENT &amp;
+							.line-wrap
+								span MODEL HEALTH MONITOR.
+					.platform-interactive-wrapper
+						.platform-tabs
+							button.tab-btn.active(data-tab="chat")
+								span.tab-dot
+								span 01 / CHAT COPILOT
+							button.tab-btn(data-tab="dashboard")
+								span.tab-dot
+								span 02 / MODEL HEALTH DASHBOARD
+						
+						.platform-viewport
+							//- Tab 1: Chat Copilot
+							.tab-panel.active#tab-chat
+								.panel-inner
+									.panel-mockup
+										img(src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a66fd66235c9b3dc9658cce_b7a2ba681bb6f203cb6b6f354b9db94f_solution1.jpg" alt="Chat Assistant Solving HVAC")
+									.panel-info
+										.info-badge REASONING ENGINE ACTIVE
+										h3.panel-title Real-Time Conversational Fixes
+										p.panel-desc Ask Heron: "Why does room 204 fail corridor egress?" Heron pinpoints the doorway swing, quotes IBC 1005.1, and offers a 1-click button to adjust the wall geometry automatically.
+
+							//- Tab 2: Dashboard
+							.tab-panel#tab-dashboard
+								.panel-inner
+									.panel-mockup
+										img(src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a66fd6676c8ee4725207aaa_c250d7593ed0b070d3eb6aa486953f89_solution2.avif" alt="Model Health Dashboard")
+									.panel-info
+										.info-badge REALTIME TELEMETRY
+										h3.panel-title Unified Firm-Wide Model Health
+										p.panel-desc Monitor compliance score, pending violations, and automated hours saved across Revit central models and Rhino worksets without leaving your dashboard.
+
+			//- SECTION 5: INTERACTIVE FAQ & USE CASES
+			section.home-usecase#why
+				.container
+					.usecase-layout
+						.usecase-left
+							.section-tag // 04 — SPECIFICATIONS
+							h2.section-heading.mask-reveal
+								.line-wrap
+									span FREQUENTLY
+								.line-wrap
+									span ANSWERED.
+							.faq-accordion-list
+								.faq-item.active(data-faq="0")
+									.faq-head
+										span.faq-q Does Heron modify my model without permission?
+										span.faq-icon -
+									.faq-body
+										p No. Heron operates in "Co-Pilot" mode by default. It highlights infractions, suggests parametric fixes, and requires explicit designer confirmation before committing geometry changes.
+								.faq-item(data-faq="1")
+									.faq-head
+										span.faq-q What building codes are currently supported?
+										span.faq-icon +
+									.faq-body
+										p Full International Building Code (IBC 2018/2021/2024), ADA Accessibility Guidelines, NFPA 101 Life Safety Code, and California Title 24, with firm-custom rule uploads.
+								.faq-item(data-faq="2")
+									.faq-head
+										span.faq-q Does it work with complex custom parametric families?
+										span.faq-icon +
+									.faq-body
+										p Yes. Heron inspects native Revit family parameters, nested curtain walls, and Rhino SubD surfaces using direct API bindings.
+						
+						.usecase-right
+							.blueprint-spec-box
+								.spec-header
+									span.spec-title MODEL DIMENSION VALIDATOR
+									span.spec-status ONLINE
+								.spec-img-holder
+									img#specImage(src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a4b5161f0d11f1602cc3c5e_Dimensions.png" alt="Dimensions Spec")
+								.spec-meta
+									.meta-col
+										span.label SCALE:
+										span.val 1:50 METRIC
+									.meta-col
+										span.label ACCURACY:
+										span.val ±0.05 MM
+									.meta-col
+										span.label PARSER:
+										span.val AI IBC-v4
+
+			//- SECTION 6: CALL TO ACTION & FOOTER
+			footer.footer#contact
+				.container
+					.footer-top-grid
+						.footer-cta-box
+							.section-tag // GET ACCESS
+							h2.footer-headline.mask-reveal
+								.line-wrap
+									span START DESIGNING
+								.line-wrap
+									span WITH HERON TODAY.
+							p.footer-sub Schedule a 20-minute live BIM demonstration tailored to your firm's standards.
+							.footer-form-wrapper
+								form.footer-form(onsubmit="event.preventDefault(); alert('Demo request submitted!');")
+									input.input-email(type="email" placeholder="Enter your work email..." required)
+									button.btn-fill.btn-brand(type="submit")
+										span.btn-fill-bg
+										span.btn-fill-label
+											span.label-top REQUEST DEMO
+											span.label-bot REQUEST DEMO
+										span.btn-fill-icon
+											span.icon-top →
+											span.icon-bot →
+
+					.footer-bottom-bar
+						.footer-copy © 2026 HERON AI INC. ALL RIGHTS RESERVED.
+						.footer-links
+							a(href="#") PRIVACY POLICY
+							a(href="#") TERMS OF SERVICE
+							a(href="#") COOKIE PREFERENCES
+
+		script(src="./script.js")

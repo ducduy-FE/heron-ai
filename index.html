@@ -1,0 +1,2299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Heron AI | Works inside your design tools — Interactive Motion Simulation</title>
+	
+	<!-- Google Fonts: Plus Jakarta Sans & Geist Mono -->
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+	
+	<!-- Essential Motion CDNs -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+	<script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19"></script>
+
+	<style>
+		/* ==========================================================================
+		   HERON AI - ARCHITECTURAL BRUTALIST MOTION & DESIGN SYSTEM
+		   ========================================================================== */
+		:root {
+			--cl-bg: #ecece4;
+			--cl-primary: #282828;
+			--cl-secondary: #414140;
+			--cl-border: #b8b8b0;
+			--cl-brand: #fa3600;
+			--cl-white: #ffffff;
+			--font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+			--font-mono: 'Geist Mono', 'Space Mono', monospace;
+			--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+			--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+		}
+
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+
+		html {
+			font-size: 16px;
+			scroll-behavior: auto !important;
+			background-color: var(--cl-bg);
+			color: var(--cl-primary);
+			font-family: var(--font-main);
+			-webkit-font-smoothing: antialiased;
+			-moz-osx-font-smoothing: grayscale;
+		}
+
+		html.lenis,
+		html.lenis-smooth {
+			scroll-behavior: auto !important;
+		}
+
+		.lenis.lenis-smooth [data-lenis-prevent] {
+			overscroll-behavior: contain;
+		}
+
+		.lenis.lenis-stopped {
+			overflow: hidden;
+		}
+
+		body {
+			background-color: var(--cl-bg);
+			overflow-x: hidden;
+			position: relative;
+			cursor: default;
+		}
+
+		/* Texture overlay with GPU compositing */
+		.bg-noise-overlay {
+			position: fixed;
+			inset: 0;
+			pointer-events: none;
+			z-index: 999;
+			opacity: 0.35;
+			background-image: url('https://cdn.prod.website-files.com/68f73a0fbae6fa626a19135c/6900476d411e3ea05889428f_bg.svg');
+			background-repeat: repeat;
+			background-size: 320px auto;
+			transform: translateZ(0);
+			will-change: transform;
+		}
+
+		/* Layout container */
+		.container {
+			width: 100%;
+			max-width: 1540px;
+			margin: 0 auto;
+			padding: 0 1.5rem;
+		}
+
+		/* ==========================================================================
+		   CUSTOM CURSOR
+		   ========================================================================== */
+		.cursor-wrapper {
+			position: fixed;
+			top: 0;
+			left: 0;
+			pointer-events: none;
+			z-index: 10000;
+			transform: translate(-50%, -50%);
+			display: none;
+		}
+
+		@media (pointer: fine) {
+			.cursor-wrapper {
+				display: block;
+			}
+		}
+
+		.cursor-dot {
+			width: 6px;
+			height: 6px;
+			background-color: var(--cl-brand);
+			border-radius: 50%;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			transition: transform 0.15s ease, background-color 0.2s ease;
+		}
+
+		.cursor-crosshair {
+			width: 24px;
+			height: 24px;
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			opacity: 0.6;
+			transition: opacity 0.2s ease, transform 0.2s ease;
+		}
+
+		.cursor-crosshair .cursor-cross-h {
+			position: absolute;
+			top: 50%;
+			left: 0;
+			width: 100%;
+			height: 1px;
+			background-color: var(--cl-primary);
+			transform: translateY(-50%);
+		}
+
+		.cursor-crosshair .cursor-cross-v {
+			position: absolute;
+			left: 50%;
+			top: 0;
+			height: 100%;
+			width: 1px;
+			background-color: var(--cl-primary);
+			transform: translateX(-50%);
+		}
+
+		/* ==========================================================================
+		   HEADER
+		   ========================================================================== */
+		.header {
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			z-index: 1000;
+			background-color: rgba(236, 236, 228, 0.92);
+			backdrop-filter: blur(8px);
+			border-bottom: 1px solid var(--cl-border);
+		}
+
+		.header-container {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			height: 68px;
+		}
+
+		.header-logo-group {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+		}
+
+		.header-logo {
+			display: flex;
+			align-items: center;
+			gap: 0.65rem;
+			text-decoration: none;
+			color: var(--cl-primary);
+		}
+
+		.header-logo .logo-icon {
+			width: 28px;
+			height: 32px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: transform 0.3s var(--ease-out);
+		}
+
+		.header-logo:hover .logo-icon {
+			transform: scale(1.08) rotate(-4deg);
+		}
+
+		.header-logo .logo-text {
+			font-family: var(--font-mono);
+			font-weight: 700;
+			font-size: 1.15rem;
+			letter-spacing: -0.02em;
+		}
+
+		.header-nav {
+			display: flex;
+			align-items: center;
+			gap: 1.75rem;
+		}
+
+		.header-nav .nav-link {
+			font-family: var(--font-mono);
+			font-size: 0.8125rem;
+			font-weight: 500;
+			letter-spacing: 0.05em;
+			text-decoration: none;
+			color: var(--cl-secondary);
+			position: relative;
+			padding: 0.4rem 0;
+			transition: color 0.2s ease;
+		}
+
+		.header-nav .nav-link:hover {
+			color: var(--cl-primary);
+		}
+
+		.header-nav .nav-link .nav-indicator {
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			width: 0%;
+			height: 2px;
+			background-color: var(--cl-brand);
+			transition: width 0.25s var(--ease-out);
+		}
+
+		.header-nav .nav-link:hover .nav-indicator {
+			width: 100%;
+		}
+
+		/* ==========================================================================
+		   INTERACTIVE BUTTON (btn-fill Double-Roll)
+		   ========================================================================== */
+		.btn-fill {
+			position: relative;
+			display: inline-flex;
+			align-items: center;
+			gap: 0.75rem;
+			padding: 0.65rem 1.25rem;
+			font-family: var(--font-mono);
+			font-size: 0.8125rem;
+			font-weight: 600;
+			letter-spacing: 0.06em;
+			text-decoration: none;
+			border: 1px solid var(--cl-primary);
+			overflow: hidden;
+			color: var(--cl-primary);
+			background: transparent;
+			cursor: pointer;
+			transition: color 0.35s ease, border-color 0.35s ease;
+		}
+
+		.btn-fill .btn-fill-bg {
+			position: absolute;
+			inset: 0;
+			background-color: var(--cl-primary);
+			transform: translateY(101%);
+			transition: transform 0.4s var(--ease-out);
+			z-index: 1;
+		}
+
+		.btn-fill .btn-fill-label {
+			position: relative;
+			z-index: 2;
+			height: 1.1em;
+			overflow: hidden;
+			display: flex;
+			flex-direction: column;
+		}
+
+		.btn-fill .btn-fill-label .label-top,
+		.btn-fill .btn-fill-label .label-bot {
+			display: block;
+			transition: transform 0.4s var(--ease-out);
+		}
+
+		.btn-fill .btn-fill-label .label-bot {
+			position: absolute;
+			top: 0;
+			left: 0;
+			transform: translateY(100%);
+		}
+
+		.btn-fill .btn-fill-icon {
+			position: relative;
+			z-index: 2;
+			width: 14px;
+			height: 14px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			overflow: hidden;
+		}
+
+		.btn-fill .btn-fill-icon .icon-top,
+		.btn-fill .btn-fill-icon .icon-bot {
+			position: absolute;
+			transition: transform 0.4s var(--ease-out);
+		}
+
+		.btn-fill .btn-fill-icon .icon-bot {
+			transform: translate(-100%, 100%);
+		}
+
+		.btn-fill:hover {
+			color: var(--cl-white);
+		}
+
+		.btn-fill:hover .btn-fill-bg {
+			transform: translateY(0%);
+		}
+
+		.btn-fill:hover .label-top {
+			transform: translateY(-100%);
+		}
+
+		.btn-fill:hover .label-bot {
+			transform: translateY(0%);
+		}
+
+		.btn-fill:hover .icon-top {
+			transform: translate(100%, -100%);
+		}
+
+		.btn-fill:hover .icon-bot {
+			transform: translate(0%, 0%);
+		}
+
+		.btn-fill.btn-brand {
+			background-color: var(--cl-brand);
+			border-color: var(--cl-brand);
+			color: var(--cl-white);
+		}
+
+		.btn-fill.btn-brand .btn-fill-bg {
+			background-color: var(--cl-primary);
+		}
+
+		.btn-fill.btn-brand:hover {
+			border-color: var(--cl-primary);
+		}
+
+		/* ==========================================================================
+		   SECTION 1: HERO & BLUEPRINT INTERACTION
+		   ========================================================================== */
+		.home-hero {
+			padding-top: 96px;
+			padding-bottom: 3.5rem;
+			position: relative;
+			border-bottom: 1px solid var(--cl-border);
+		}
+
+		.home-hero-frame {
+			position: relative;
+			background-color: rgba(255, 255, 255, 0.45);
+			border: 1px solid var(--cl-border);
+			margin-bottom: 2.5rem;
+			overflow: hidden;
+			box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+		}
+
+		.corner-cross {
+			position: absolute;
+			font-family: var(--font-mono);
+			font-size: 1.1rem;
+			color: var(--cl-primary);
+			line-height: 1;
+			z-index: 20;
+			pointer-events: none;
+		}
+
+		.corner-cross.top-left { top: 6px; left: 8px; }
+		.corner-cross.top-right { top: 6px; right: 8px; }
+		.corner-cross.bot-left { bottom: 6px; left: 8px; }
+		.corner-cross.bot-right { bottom: 6px; right: 8px; }
+
+		.hero-blueprint-area {
+			position: relative;
+			width: 100%;
+			height: 640px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			overflow: hidden;
+			cursor: crosshair;
+		}
+
+		@media (max-width: 991px) {
+			.hero-blueprint-area { height: 480px; }
+		}
+
+		@media (max-width: 767px) {
+			.hero-blueprint-area { height: 380px; }
+		}
+
+		.blueprint-drawing {
+			position: absolute;
+			width: 82%;
+			max-width: 1050px;
+			height: auto;
+			pointer-events: none;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.blueprint-drawing .blueprint-img {
+			width: 100%;
+			height: auto;
+			object-fit: contain;
+			filter: contrast(1.08) brightness(0.98);
+		}
+
+		/* Crosshair Hairlines */
+		.crosshair-line {
+			position: absolute;
+			pointer-events: none;
+			z-index: 10;
+			background-color: rgba(40, 40, 40, 0.25);
+			transition: opacity 0.2s ease;
+		}
+
+		.crosshair-line.line-h {
+			left: 0;
+			right: 0;
+			height: 1px;
+			top: 50%;
+		}
+
+		.crosshair-line.line-v {
+			top: 0;
+			bottom: 0;
+			width: 1px;
+			left: 50%;
+		}
+
+		.crosshair-tracker {
+			position: absolute;
+			pointer-events: none;
+			z-index: 12;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.crosshair-tracker .crosshair-plus {
+			font-family: var(--font-mono);
+			font-size: 1rem;
+			color: var(--cl-brand);
+			font-weight: 700;
+		}
+
+		.crosshair-tracker .coordinate-badge {
+			font-family: var(--font-mono);
+			font-size: 0.6875rem;
+			font-weight: 600;
+			padding: 2px 8px;
+			background: rgba(40, 40, 40, 0.9);
+			color: var(--cl-white);
+			letter-spacing: 0.05em;
+			border-radius: 2px;
+			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+		}
+
+		/* Violation Markers */
+		.violation-marker {
+			position: absolute;
+			z-index: 15;
+			transform: translate(-50%, -50%);
+			cursor: pointer;
+		}
+
+		.violation-marker .pulsing-dot {
+			width: 14px;
+			height: 14px;
+			background-color: var(--cl-brand);
+			position: relative;
+			animation: pulseDot 1.8s infinite;
+		}
+
+		.violation-marker .pulsing-dot::after {
+			content: '';
+			position: absolute;
+			inset: -4px;
+			border: 1px solid var(--cl-brand);
+			opacity: 0.7;
+			animation: ripple 1.8s infinite;
+		}
+
+		.violation-marker .violation-card {
+			position: absolute;
+			top: calc(100% + 10px);
+			left: 50%;
+			transform: translateX(-50%);
+			background: rgba(245, 245, 237, 0.95);
+			border: 1px solid var(--cl-brand);
+			padding: 0.4rem 0.65rem;
+			min-width: 190px;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+			backdrop-filter: blur(4px);
+			transition: transform 0.25s var(--ease-out), opacity 0.25s ease;
+		}
+
+		.violation-marker .violation-card .violation-code {
+			font-family: var(--font-mono);
+			font-size: 0.6875rem;
+			font-weight: 700;
+			color: var(--cl-brand);
+			letter-spacing: 0.06em;
+			margin-bottom: 2px;
+		}
+
+		.violation-marker .violation-card .violation-desc {
+			font-family: var(--font-mono);
+			font-size: 0.75rem;
+			font-weight: 500;
+			color: var(--cl-primary);
+			line-height: 1.25;
+		}
+
+		.violation-marker:hover .violation-card {
+			transform: translateX(-50%) translateY(-2px);
+			box-shadow: 0 6px 16px rgba(250, 54, 0, 0.15);
+		}
+
+		@keyframes pulseDot {
+			0%, 100% { transform: scale(1); opacity: 1; }
+			50% { transform: scale(1.15); opacity: 0.85; }
+		}
+
+		@keyframes ripple {
+			0% { transform: scale(1); opacity: 0.8; }
+			100% { transform: scale(1.6); opacity: 0; }
+		}
+
+		/* Projection dashed lines */
+		.proj-line {
+			position: absolute;
+			border-style: dashed;
+			border-color: rgba(250, 54, 0, 0.45);
+			pointer-events: none;
+		}
+
+		.proj-line.proj-h-left {
+			right: 14px;
+			top: 7px;
+			width: 320px;
+			border-top-width: 1px;
+		}
+
+		.proj-line.proj-h-right {
+			left: 14px;
+			top: 7px;
+			width: 440px;
+			border-top-width: 1px;
+		}
+
+		.proj-line.proj-v-top {
+			left: 7px;
+			bottom: 14px;
+			height: 380px;
+			border-left-width: 1px;
+		}
+
+		.proj-line.proj-v-bot {
+			left: 7px;
+			top: 14px;
+			height: 280px;
+			border-left-width: 1px;
+		}
+
+		/* Outer ruler scale */
+		.ruler-scale {
+			position: absolute;
+			pointer-events: none;
+		}
+
+		.ruler-scale.scale-top {
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 16px;
+			border-bottom: 1px solid var(--cl-border);
+		}
+
+		.ruler-scale.scale-top .tick {
+			position: absolute;
+			top: 0;
+			width: 1px;
+			height: 8px;
+			background-color: var(--cl-border);
+		}
+
+		.ruler-scale.scale-left {
+			top: 0;
+			left: 0;
+			bottom: 0;
+			width: 16px;
+			border-right: 1px solid var(--cl-border);
+		}
+
+		.ruler-scale.scale-left .tick {
+			position: absolute;
+			left: 0;
+			height: 1px;
+			width: 8px;
+			background-color: var(--cl-border);
+		}
+
+		/* Drag hint */
+		.hero-drag-hint {
+			position: absolute;
+			bottom: 16px;
+			left: 50%;
+			transform: translateX(-50%);
+			font-family: var(--font-mono);
+			font-size: 0.6875rem;
+			letter-spacing: 0.08em;
+			color: var(--cl-secondary);
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			background: rgba(245, 245, 237, 0.85);
+			padding: 4px 12px;
+			border: 1px solid var(--cl-border);
+		}
+
+		.hero-drag-hint .hint-dot {
+			width: 6px;
+			height: 6px;
+			background-color: var(--cl-brand);
+			border-radius: 50%;
+			display: inline-block;
+		}
+
+		/* Hero Footer Row */
+		.hero-footer-row {
+			display: grid;
+			grid-template-columns: 1.4fr 1fr;
+			gap: 3rem;
+			align-items: start;
+			margin-top: 1.5rem;
+			padding-bottom: 2.5rem;
+			border-bottom: 1px solid var(--cl-border);
+		}
+
+		@media (max-width: 991px) {
+			.hero-footer-row {
+				grid-template-columns: 1fr;
+				gap: 1.5rem;
+			}
+		}
+
+		.hero-title {
+			font-family: var(--font-main);
+			font-size: clamp(2rem, 3.8vw, 3.5rem);
+			font-weight: 800;
+			line-height: 1.05;
+			letter-spacing: -0.035em;
+			text-transform: uppercase;
+		}
+
+		.hero-desc {
+			font-size: 1.0625rem;
+			line-height: 1.55;
+			color: var(--cl-secondary);
+			margin-bottom: 1.5rem;
+		}
+
+		/* CAD Marquee */
+		.cad-marquee-section {
+			margin-top: 1.5rem;
+			display: flex;
+			align-items: center;
+			gap: 2rem;
+			overflow: hidden;
+			position: relative;
+		}
+
+		.cad-marquee-section .marquee-label {
+			font-family: var(--font-mono);
+			font-size: 0.75rem;
+			font-weight: 600;
+			color: var(--cl-secondary);
+			white-space: nowrap;
+			letter-spacing: 0.08em;
+		}
+
+		.cad-marquee-section .marquee-track {
+			display: flex;
+			width: 100%;
+			overflow: hidden;
+			mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+		}
+
+		.cad-marquee-section .marquee-content {
+			display: flex;
+			align-items: center;
+			gap: 2.5rem;
+			white-space: nowrap;
+			animation: scrollMarquee 24s linear infinite;
+		}
+
+		.cad-item {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			font-family: var(--font-mono);
+			font-size: 0.8125rem;
+			font-weight: 600;
+			letter-spacing: 0.06em;
+			color: var(--cl-primary);
+		}
+
+		.cad-item .cad-dot {
+			width: 6px;
+			height: 6px;
+			background-color: var(--cl-primary);
+		}
+
+		@keyframes scrollMarquee {
+			0% { transform: translateX(0); }
+			100% { transform: translateX(-100%); }
+		}
+
+		/* ==========================================================================
+		   SECTION 2: INTRO & INK MASK REVEAL
+		   ========================================================================== */
+		.home-intro {
+			padding: 6rem 0;
+			border-bottom: 1px solid var(--cl-border);
+		}
+
+		.intro-grid {
+			display: grid;
+			grid-template-columns: 1fr 1.1fr;
+			gap: 4rem;
+			align-items: center;
+		}
+
+		@media (max-width: 991px) {
+			.intro-grid {
+				grid-template-columns: 1fr;
+				gap: 2.5rem;
+			}
+		}
+
+		.section-tag {
+			font-family: var(--font-mono);
+			font-size: 0.75rem;
+			font-weight: 700;
+			color: var(--cl-brand);
+			letter-spacing: 0.1em;
+			margin-bottom: 1rem;
+		}
+
+		.section-heading {
+			font-size: clamp(2rem, 3.2vw, 3rem);
+			font-weight: 800;
+			line-height: 1.1;
+			letter-spacing: -0.03em;
+			text-transform: uppercase;
+			margin-bottom: 1.5rem;
+		}
+
+		.intro-body-text {
+			font-size: 1.0625rem;
+			line-height: 1.6;
+			color: var(--cl-secondary);
+			margin-bottom: 2rem;
+		}
+
+		.partner-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding-top: 1.5rem;
+			border-top: 1px solid var(--cl-border);
+			font-family: var(--font-mono);
+			font-size: 0.75rem;
+			color: var(--cl-secondary);
+			letter-spacing: 0.06em;
+		}
+
+		/* Ink Mask Visual Card */
+		.ink-mask-card {
+			position: relative;
+			border: 1px solid var(--cl-border);
+			background: #ffffff;
+			padding: 1rem;
+			box-shadow: 0 12px 36px rgba(0, 0, 0, 0.05);
+		}
+
+		.ink-mask-wrapper {
+			position: relative;
+			width: 100%;
+			aspect-ratio: 16 / 10;
+			overflow: hidden;
+			background-color: #000;
+		}
+
+		.ink-mask-wrapper .ink-img-base {
+			position: absolute;
+			inset: 0;
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			opacity: 0.85;
+		}
+
+		.ink-mask-wrapper .ink-mask-overlay {
+			position: absolute;
+			inset: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+		.ink-mask-badge {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			font-family: var(--font-mono);
+			font-size: 0.6875rem;
+			font-weight: 600;
+			letter-spacing: 0.08em;
+			color: var(--cl-secondary);
+			margin-top: 0.75rem;
+		}
+
+		.ink-mask-badge .live-dot {
+			width: 7px;
+			height: 7px;
+			background-color: var(--cl-brand);
+			border-radius: 50%;
+			animation: pulseDot 1.4s infinite;
+		}
+
+		/* ==========================================================================
+		   SECTION 3: THE PROBLEM & STICKY ACCORDION
+		   ========================================================================== */
+		.home-problem {
+			padding: 6rem 0;
+			border-bottom: 1px solid var(--cl-border);
+		}
+
+		.problem-header {
+			margin-bottom: 3.5rem;
+		}
+
+		.problem-cards-grid {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 1.5rem;
+		}
+
+		@media (max-width: 991px) {
+			.problem-cards-grid {
+				grid-template-columns: 1fr;
+			}
+		}
+
+		.problem-card {
+			border: 1px solid var(--cl-border);
+			background: rgba(255, 255, 255, 0.5);
+			padding: 2rem 1.75rem;
+			display: flex;
+			flex-direction: column;
+			justify-content: space-between;
+			min-height: 280px;
+			transition: transform 0.3s var(--ease-out), border-color 0.3s ease, background 0.3s ease;
+			cursor: pointer;
+		}
+
+		.problem-card .card-header {
+			display: flex;
+			align-items: baseline;
+			justify-content: space-between;
+			margin-bottom: 1.5rem;
+		}
+
+		.problem-card .card-header .card-num {
+			font-family: var(--font-mono);
+			font-size: 1.25rem;
+			font-weight: 700;
+			color: var(--cl-brand);
+		}
+
+		.problem-card .card-header .card-title {
+			font-family: var(--font-mono);
+			font-size: 0.875rem;
+			font-weight: 700;
+			letter-spacing: 0.05em;
+		}
+
+		.problem-card .card-header .card-toggle {
+			font-family: var(--font-mono);
+			font-size: 1.25rem;
+			font-weight: 600;
+			color: var(--cl-primary);
+		}
+
+		.problem-card .card-body p {
+			font-size: 0.9375rem;
+			line-height: 1.55;
+			color: var(--cl-secondary);
+			margin-bottom: 1.5rem;
+		}
+
+		.problem-card .card-body .card-tag-mono {
+			font-family: var(--font-mono);
+			font-size: 0.6875rem;
+			font-weight: 700;
+			letter-spacing: 0.08em;
+			color: var(--cl-brand);
+		}
+
+		.problem-card:hover,
+		.problem-card.active {
+			border-color: var(--cl-primary);
+			background: #ffffff;
+			transform: translateY(-4px);
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+		}
+
+		/* ==========================================================================
+		   SECTION 4: PLATFORM TABBED SHOWCASE
+		   ========================================================================== */
+		.home-platform {
+			padding: 6rem 0;
+			border-bottom: 1px solid var(--cl-border);
+		}
+
+		.platform-header {
+			margin-bottom: 3rem;
+		}
+
+		.platform-tabs {
+			display: flex;
+			gap: 1rem;
+			margin-bottom: 2rem;
+			border-bottom: 1px solid var(--cl-border);
+			padding-bottom: 1rem;
+		}
+
+		.platform-tabs .tab-btn {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.6rem 1.25rem;
+			font-family: var(--font-mono);
+			font-size: 0.8125rem;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			background: transparent;
+			border: 1px solid var(--cl-border);
+			color: var(--cl-secondary);
+			cursor: pointer;
+			transition: all 0.25s ease;
+		}
+
+		.platform-tabs .tab-btn .tab-dot {
+			width: 6px;
+			height: 6px;
+			background-color: var(--cl-border);
+			border-radius: 50%;
+			transition: background-color 0.25s ease;
+		}
+
+		.platform-tabs .tab-btn:hover {
+			border-color: var(--cl-primary);
+			color: var(--cl-primary);
+		}
+
+		.platform-tabs .tab-btn.active {
+			background-color: var(--cl-primary);
+			border-color: var(--cl-primary);
+			color: var(--cl-white);
+		}
+
+		.platform-tabs .tab-btn.active .tab-dot {
+			background-color: var(--cl-brand);
+		}
+
+		.platform-viewport {
+			position: relative;
+			min-height: 520px;
+		}
+
+		.tab-panel {
+			display: none;
+			opacity: 0;
+			transition: opacity 0.4s var(--ease-out);
+		}
+
+		.tab-panel.active {
+			display: block;
+			opacity: 1;
+		}
+
+		.tab-panel .panel-inner {
+			display: grid;
+			grid-template-columns: 1.4fr 1fr;
+			gap: 3rem;
+			align-items: center;
+			background: #ffffff;
+			border: 1px solid var(--cl-border);
+			padding: 2.5rem;
+		}
+
+		@media (max-width: 991px) {
+			.tab-panel .panel-inner {
+				grid-template-columns: 1fr;
+				padding: 1.5rem;
+				gap: 2rem;
+			}
+		}
+
+		.tab-panel .panel-mockup {
+			border: 1px solid var(--cl-border);
+			overflow: hidden;
+			box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+		}
+
+		.tab-panel .panel-mockup img {
+			width: 100%;
+			height: auto;
+			display: block;
+		}
+
+		.tab-panel .panel-info .info-badge {
+			display: inline-block;
+			font-family: var(--font-mono);
+			font-size: 0.6875rem;
+			font-weight: 700;
+			letter-spacing: 0.08em;
+			color: var(--cl-brand);
+			margin-bottom: 1rem;
+		}
+
+		.tab-panel .panel-info .panel-title {
+			font-size: 1.75rem;
+			font-weight: 800;
+			line-height: 1.2;
+			margin-bottom: 1rem;
+		}
+
+		.tab-panel .panel-info .panel-desc {
+			font-size: 1rem;
+			line-height: 1.6;
+			color: var(--cl-secondary);
+		}
+
+		/* ==========================================================================
+		   SECTION 5: FAQ & SPEC DIMENSION ACCORDION
+		   ========================================================================== */
+		.home-usecase {
+			padding: 6rem 0;
+			border-bottom: 1px solid var(--cl-border);
+		}
+
+		.usecase-layout {
+			display: grid;
+			grid-template-columns: 1.2fr 1fr;
+			gap: 4rem;
+			align-items: start;
+		}
+
+		@media (max-width: 991px) {
+			.usecase-layout {
+				grid-template-columns: 1fr;
+				gap: 3rem;
+			}
+		}
+
+		.faq-accordion-list {
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+			margin-top: 2rem;
+		}
+
+		.faq-item {
+			border: 1px solid var(--cl-border);
+			background: rgba(255, 255, 255, 0.4);
+			transition: background-color 0.25s ease, border-color 0.25s ease;
+			cursor: pointer;
+		}
+
+		.faq-item .faq-head {
+			padding: 1.25rem 1.5rem;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+		}
+
+		.faq-item .faq-head .faq-q {
+			font-family: var(--font-mono);
+			font-size: 0.9375rem;
+			font-weight: 600;
+			color: var(--cl-primary);
+		}
+
+		.faq-item .faq-head .faq-icon {
+			font-family: var(--font-mono);
+			font-size: 1.25rem;
+			font-weight: 700;
+			color: var(--cl-brand);
+		}
+
+		.faq-item .faq-body {
+			max-height: 0;
+			overflow: hidden;
+			transition: max-height 0.35s var(--ease-out), padding 0.35s ease;
+			padding: 0 1.5rem;
+		}
+
+		.faq-item .faq-body p {
+			font-size: 0.9375rem;
+			line-height: 1.6;
+			color: var(--cl-secondary);
+			padding-bottom: 1.25rem;
+		}
+
+		.faq-item.active {
+			border-color: var(--cl-primary);
+			background: #ffffff;
+		}
+
+		.faq-item.active .faq-body {
+			max-height: 200px;
+		}
+
+		.blueprint-spec-box {
+			border: 1px solid var(--cl-border);
+			background: #ffffff;
+			padding: 1.5rem;
+			box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+		}
+
+		.blueprint-spec-box .spec-header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			font-family: var(--font-mono);
+			font-size: 0.75rem;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			padding-bottom: 0.75rem;
+			border-bottom: 1px solid var(--cl-border);
+			margin-bottom: 1rem;
+		}
+
+		.blueprint-spec-box .spec-header .spec-status {
+			color: var(--cl-brand);
+		}
+
+		.blueprint-spec-box .spec-img-holder {
+			width: 100%;
+			border: 1px solid var(--cl-border);
+			overflow: hidden;
+			background: #000;
+			margin-bottom: 1rem;
+		}
+
+		.blueprint-spec-box .spec-img-holder img {
+			width: 100%;
+			height: auto;
+			display: block;
+			transition: transform 0.4s var(--ease-out);
+		}
+
+		.blueprint-spec-box .spec-img-holder:hover img {
+			transform: scale(1.03);
+		}
+
+		.blueprint-spec-box .spec-meta {
+			display: flex;
+			justify-content: space-between;
+			font-family: var(--font-mono);
+			font-size: 0.6875rem;
+			color: var(--cl-secondary);
+			padding-top: 0.5rem;
+		}
+
+		.blueprint-spec-box .spec-meta .label {
+			margin-right: 4px;
+		}
+
+		.blueprint-spec-box .spec-meta .val {
+			color: var(--cl-primary);
+			font-weight: 700;
+		}
+
+		/* ==========================================================================
+		   FOOTER
+		   ========================================================================== */
+		.footer {
+			padding: 6rem 0 3rem;
+			background-color: var(--cl-bg);
+		}
+
+		.footer-top-grid {
+			margin-bottom: 4rem;
+		}
+
+		.footer-cta-box {
+			border: 1px solid var(--cl-border);
+			background: #ffffff;
+			padding: 4rem;
+			text-align: center;
+			box-shadow: 0 12px 40px rgba(0, 0, 0, 0.04);
+		}
+
+		@media (max-width: 767px) {
+			.footer-cta-box {
+				padding: 2.5rem 1.5rem;
+			}
+		}
+
+		.footer-headline {
+			font-size: clamp(2rem, 3.5vw, 3.25rem);
+			font-weight: 800;
+			text-transform: uppercase;
+			line-height: 1.1;
+			margin-bottom: 1rem;
+		}
+
+		.footer-sub {
+			font-size: 1.125rem;
+			color: var(--cl-secondary);
+			max-width: 580px;
+			margin: 0 auto 2.5rem;
+		}
+
+		.footer-form-wrapper {
+			max-width: 540px;
+			margin: 0 auto;
+		}
+
+		.footer-form {
+			display: flex;
+			gap: 0.75rem;
+		}
+
+		@media (max-width: 540px) {
+			.footer-form {
+				flex-direction: column;
+			}
+		}
+
+		.input-email {
+			flex: 1;
+			padding: 0.75rem 1.25rem;
+			font-family: var(--font-mono);
+			font-size: 0.875rem;
+			border: 1px solid var(--cl-border);
+			background: var(--cl-bg);
+			color: var(--cl-primary);
+			outline: none;
+			transition: border-color 0.25s ease;
+		}
+
+		.input-email:focus {
+			border-color: var(--cl-primary);
+		}
+
+		.footer-bottom-bar {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			padding-top: 2rem;
+			border-top: 1px solid var(--cl-border);
+			font-family: var(--font-mono);
+			font-size: 0.75rem;
+			color: var(--cl-secondary);
+		}
+
+		@media (max-width: 767px) {
+			.footer-bottom-bar {
+				flex-direction: column;
+				gap: 1rem;
+				text-align: center;
+			}
+		}
+
+		.footer-links {
+			display: flex;
+			gap: 1.5rem;
+		}
+
+		.footer-links a {
+			color: var(--cl-secondary);
+			text-decoration: none;
+			transition: color 0.2s ease;
+		}
+
+		.footer-links a:hover {
+			color: var(--cl-primary);
+		}
+
+		/* ==========================================================================
+		   KINETIC TYPOGRAPHY MASK UTILITY
+		   ========================================================================== */
+		.mask-reveal .line-wrap {
+			display: block;
+			overflow: hidden;
+			line-height: 1.15;
+		}
+
+		.mask-reveal .line-wrap span {
+			display: inline-block;
+			transform: translateY(105%);
+			transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+		}
+
+		.mask-reveal.is-revealed .line-wrap span {
+			transform: translateY(0%);
+		}
+	</style>
+</head>
+<body class="body">
+
+	<!-- Custom Cursor -->
+	<div class="cursor-wrapper">
+		<div class="cursor-dot"></div>
+		<div class="cursor-crosshair">
+			<div class="cursor-cross-h"></div>
+			<div class="cursor-cross-v"></div>
+		</div>
+	</div>
+
+	<!-- Background Noise / Grid Texture -->
+	<div class="bg-noise-overlay"></div>
+
+	<!-- SVG Displacement Filter for Organic Ink Morph Reveal -->
+	<svg class="svg-filters" width="0" height="0" style="position: absolute;">
+		<defs>
+			<filter id="sharedDisplacementFilter">
+				<feTurbulence type="fractalNoise" baseFrequency="0.045 0.055" numOctaves="4" seed="5" result="noise"></feTurbulence>
+				<feDisplacementMap in="SourceGraphic" in2="noise" scale="100" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+				<feGaussianBlur stdDeviation="1.8" result="blurred"></feGaussianBlur>
+				<feComponentTransfer in="blurred" result="contrast">
+					<feFuncA type="linear" slope="2.2" intercept="-0.6"></feFuncA>
+				</feComponentTransfer>
+			</filter>
+		</defs>
+	</svg>
+
+	<!-- Floating Header Navigation -->
+	<header class="header">
+		<div class="container header-container">
+			<div class="header-logo-group">
+				<a class="header-logo" href="#hero">
+					<div class="logo-icon">
+						<svg viewBox="0 0 34 39" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M1.3053 28.1935L6.3863 31.0856L6.39125 31.0885L6.39607 31.0913L11.7671 34.2717L16.0538 36.7537V19.7481L11.1075 16.8844L5.73719 13.7849L1.3053 11.2187V28.1935ZM28.0021 13.5958V19.7127L21.3258 23.5785V17.4515L17.3591 19.7481V36.7537L21.3258 34.4571V28.1935L28.0021 24.3937V30.5303L32.1077 28.1935V11.2187L28.0021 13.5958ZM23.2939 28.575L26.6968 30.5263V26.6383L23.2939 28.575ZM22.6311 21.3143L26.032 19.345L22.6311 17.4346V21.3143ZM1.95328 10.0855L6.39055 12.6548L11.7609 15.7543L16.7065 18.6178L20.6833 16.3152L16.3756 13.7822L11.1048 10.6498L6.0621 7.69769L1.95328 10.0855ZM12.0377 9.68567L17.0372 12.657L22.3003 15.7517L26.6968 18.2211V13.5944L21.6509 10.6512L16.3792 7.59458L16.3753 7.59231L16.3717 7.59019L12.0377 4.99998V9.68567ZM12.6703 3.85756L17.039 6.4683L22.3057 9.52208L22.3071 9.52293L27.3506 12.4645L31.4457 10.0936L27.0285 7.59812L21.6492 4.45709L16.7025 1.51421L12.6703 3.85756ZM33.413 28.9525L27.3483 32.4045L22.6311 29.6996V35.2096L16.7065 38.64L11.1048 35.3966L11.1022 35.3949L5.74059 32.2201L0 28.9525V9.71102L6.06464 6.18659L10.7323 8.91915V3.47415L16.7103 0L22.3121 3.33266L27.6706 6.46165L33.413 9.70578V28.9525Z" fill="currentColor"></path>
+						</svg>
+					</div>
+					<span class="logo-text">HERON AI</span>
+				</a>
+			</div>
+			<nav class="header-nav">
+				<a class="nav-link" href="#intro">
+					<span>PRODUCT</span>
+					<span class="nav-indicator"></span>
+				</a>
+				<a class="nav-link" href="#problem">
+					<span>PRICING</span>
+				</a>
+				<a class="nav-link" href="#platform">
+					<span>PLATFORM</span>
+				</a>
+				<a class="nav-link" href="#why">
+					<span>ABOUT</span>
+				</a>
+				<a class="btn-fill btn-primary" href="#contact">
+					<span class="btn-fill-bg"></span>
+					<span class="btn-fill-label">
+						<span class="label-top">CONTACT US</span>
+						<span class="label-bot">CONTACT US</span>
+					</span>
+					<span class="btn-fill-icon">
+						<span class="icon-top">→</span>
+						<span class="icon-bot">→</span>
+					</span>
+				</a>
+			</nav>
+		</div>
+	</header>
+
+	<!-- Main Application Container -->
+	<main class="main-content">
+		
+		<!-- SECTION 1: HERO (Architectural Blueprint + Interactive Violation Spotter) -->
+		<section class="home-hero" id="hero">
+			<div class="container">
+				<div class="home-hero-frame">
+					<!-- Corner Crosshairs -->
+					<div class="corner-cross top-left">+</div>
+					<div class="corner-cross top-right">+</div>
+					<div class="corner-cross bot-left">+</div>
+					<div class="corner-cross bot-right">+</div>
+
+					<!-- Interactive Canvas Container -->
+					<div class="hero-blueprint-area" id="heroCanvasArea">
+						<!-- Cursor Hairline Guides (Follow Mouse) -->
+						<div class="crosshair-line line-h" id="cursorLineH"></div>
+						<div class="crosshair-line line-v" id="cursorLineV"></div>
+						<div class="crosshair-tracker" id="cursorTracker">
+							<span class="crosshair-plus">+</span>
+							<div class="coordinate-badge">
+								<span>X: </span>
+								<span class="coord-x" id="coordX">1301</span>
+								<span>PX &nbsp;|&nbsp; Y: </span>
+								<span class="coord-y" id="coordY">876</span>
+								<span>PX</span>
+							</div>
+						</div>
+						
+						<!-- Architectural Blueprint Drawing -->
+						<div class="blueprint-drawing">
+							<img class="blueprint-img" src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a703ca7b25c47076637c631_4f993b1a199968429382e85294f3e6d1_Full.webp" alt="Heron AI Architectural Blueprint">
+						</div>
+
+						<!-- Violation 1: Handrails Required (IBC 1011.11) -->
+						<div class="violation-marker violation-1" style="left: 31%; top: 58%;">
+							<div class="pulsing-dot"></div>
+							<div class="violation-card">
+								<div class="violation-code">IBC 1011.11</div>
+								<div class="violation-desc">Handrails required.</div>
+							</div>
+							<!-- Dynamic projection lines connecting to outer rulers -->
+							<div class="proj-line proj-h-left"></div>
+							<div class="proj-line proj-v-top"></div>
+							<div class="proj-line proj-v-bot"></div>
+						</div>
+
+						<!-- Violation 2: Guardrail Fall Protection (IBC 1015.3) -->
+						<div class="violation-marker violation-2" style="left: 63%; top: 62%;">
+							<div class="pulsing-dot"></div>
+							<div class="violation-card">
+								<div class="violation-code">IBC 1015.3</div>
+								<div class="violation-desc">Guardrail required for fall protection</div>
+							</div>
+							<!-- Dynamic projection lines connecting to outer rulers -->
+							<div class="proj-line proj-h-right"></div>
+							<div class="proj-line proj-v-top"></div>
+							<div class="proj-line proj-v-bot"></div>
+						</div>
+
+						<!-- Top Ruler Scale -->
+						<div class="ruler-scale scale-top">
+							<div class="tick" style="left: 10%"></div>
+							<div class="tick" style="left: 20%"></div>
+							<div class="tick" style="left: 31%"></div>
+							<div class="tick" style="left: 45%"></div>
+							<div class="tick" style="left: 63%"></div>
+							<div class="tick" style="left: 80%"></div>
+							<div class="tick" style="left: 90%"></div>
+						</div>
+						
+						<!-- Left Ruler Scale -->
+						<div class="ruler-scale scale-left">
+							<div class="tick" style="top: 15%"></div>
+							<div class="tick" style="top: 30%"></div>
+							<div class="tick" style="top: 58%"></div>
+							<div class="tick" style="top: 62%"></div>
+							<div class="tick" style="top: 85%"></div>
+						</div>
+
+						<!-- Bottom Drag Callout Notice -->
+						<div class="hero-drag-hint">
+							<span class="hint-dot"></span>
+							<span>Click and drag your mouse to explore violations</span>
+						</div>
+					</div>
+
+					<!-- Hero Bottom Editorial Content -->
+					<div class="hero-footer-row">
+						<div class="hero-heading-block">
+							<h1 class="hero-title mask-reveal">
+								<div class="line-wrap"><span>AN AI AGENT THAT WORKS</span></div>
+								<div class="line-wrap"><span>INSIDE YOUR DESIGN TOOLS</span></div>
+							</h1>
+						</div>
+						<div class="hero-desc-block">
+							<p class="hero-desc mask-reveal">
+								Heron reviews your model, identifies issues, and proposes solutions. Upon approval, it edits automatically. Experience real-time building code compliance and automation natively.
+							</p>
+							<div class="hero-cta-action">
+								<a class="btn-fill btn-brand" href="#platform">
+									<span class="btn-fill-bg"></span>
+									<span class="btn-fill-label">
+										<span class="label-top">DISCOVER MORE</span>
+										<span class="label-bot">DISCOVER MORE</span>
+									</span>
+									<span class="btn-fill-icon">
+										<span class="icon-top">→</span>
+										<span class="icon-bot">→</span>
+									</span>
+								</a>
+							</div>
+						</div>
+					</div>
+
+					<!-- Ticker Marquee of CAD integrations -->
+					<div class="cad-marquee-section">
+						<div class="marquee-label">WORKS SEAMLESSLY WITH</div>
+						<div class="marquee-track" id="cadMarquee">
+							<div class="marquee-content">
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">AUTODESK REVIT</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">RHINOCEROS 3D</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">GRAPHISOFT ARCHICAD</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">TRIMBLE SKETCHUP</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">VECTORWORKS</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">BLENDER ARCH</span></div>
+							</div>
+							<div class="marquee-content" aria-hidden="true">
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">AUTODESK REVIT</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">RHINOCEROS 3D</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">GRAPHISOFT ARCHICAD</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">TRIMBLE SKETCHUP</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">VECTORWORKS</span></div>
+								<div class="cad-item"><span class="cad-dot"></span><span class="cad-name">BLENDER ARCH</span></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- SECTION 2: INTRO & INK MASK REVEAL -->
+		<section class="home-intro" id="intro">
+			<div class="container">
+				<div class="intro-grid">
+					<div class="intro-left">
+						<div class="section-tag">// 01 — SEAMLESS COMPLIANCE</div>
+						<h2 class="section-heading mask-reveal">
+							<div class="line-wrap"><span>DESIGN FREELY.</span></div>
+							<div class="line-wrap"><span>HERON WATCHES</span></div>
+							<div class="line-wrap"><span>THE CODE.</span></div>
+						</h2>
+						<p class="intro-body-text">
+							Traditional code checking takes weeks of manual review, delays milestones, and forces painful redesigns. Heron sits directly beside you as a proactive copilot, flagging egress, fire ratings, clearances, and structural conflicts the instant you place an element.
+						</p>
+						<div class="partner-row">
+							<div class="partner-label">TRUSTED BY TOP GLOBAL DESIGN FIRMS</div>
+							<div class="partner-counter">(45+ FIRMS IN PILOT)</div>
+						</div>
+					</div>
+
+					<div class="intro-right">
+						<!-- Organic Ink Mask Reveal Container -->
+						<div class="ink-mask-card" id="inkMaskContainer">
+							<div class="ink-mask-wrapper">
+								<!-- Base Image -->
+								<img class="ink-img-base" src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a69a23dcc24456128e2afe3_image%20345.avif" alt="Interactive Model Review">
+								<!-- Overlay with SVG Morph Mask -->
+								<div class="ink-mask-overlay">
+									<svg class="ink-svg-layer" width="100%" height="100%" preserveAspectRatio="none">
+										<defs>
+											<mask id="inkMorphMask-1" maskContentUnits="userSpaceOnUse">
+												<path class="ink-path-morph" fill="white" style="filter: url(#sharedDisplacementFilter);" d="M 0 1 Q 500 2 1000 1 L 1000 0 L 0 0 Z"></path>
+											</mask>
+										</defs>
+										<g mask="url(#inkMorphMask-1)">
+											<image href="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a66fd66235c9b3dc9658cce_b7a2ba681bb6f203cb6b6f354b9db94f_solution1.jpg" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"></image>
+										</g>
+									</svg>
+								</div>
+							</div>
+							<div class="ink-mask-badge">
+								<span class="live-dot"></span>
+								<span>LIVE REVEAL SIMULATION</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- SECTION 3: THE PROBLEM & STICKY ACCORDION -->
+		<section class="home-problem" id="problem">
+			<div class="container">
+				<div class="problem-header">
+					<div class="section-tag">// 02 — THE BOTTLENECK</div>
+					<h2 class="section-heading mask-reveal">
+						<div class="line-wrap"><span>MANUAL REVIEWS KILL</span></div>
+						<div class="line-wrap"><span>DESIGN VELOCITY.</span></div>
+					</h2>
+				</div>
+				<div class="problem-cards-grid">
+					<div class="problem-card active" data-index="0">
+						<div class="card-header">
+							<div class="card-num">01</div>
+							<div class="card-title">FRAGMENTED CODE CHECKS</div>
+							<div class="card-toggle">+</div>
+						</div>
+						<div class="card-body">
+							<p>Building codes vary across state, city, and building type. Cross-referencing hundreds of pages of IBC, NFPA, and ADA guidelines leads to costly omissions and rework during permit review.</p>
+							<div class="card-tag-mono">STATUS: HIGH LATENCY</div>
+						</div>
+					</div>
+					<div class="problem-card" data-index="1">
+						<div class="card-header">
+							<div class="card-num">02</div>
+							<div class="card-title">CONFLICTING DISCIPLINES</div>
+							<div class="card-toggle">+</div>
+						</div>
+						<div class="card-body">
+							<p>Mechanical, electrical, and structural systems constantly clash with architectural spatial goals. Catching clashes late forces emergency compromises that undermine design intent.</p>
+							<div class="card-tag-mono">STATUS: 30% REWORK TIME</div>
+						</div>
+					</div>
+					<div class="problem-card" data-index="2">
+						<div class="card-header">
+							<div class="card-num">03</div>
+							<div class="card-title">DISCONNECTED TOOLS</div>
+							<div class="card-toggle">+</div>
+						</div>
+						<div class="card-body">
+							<p>Third-party analysis tools require clunky exports, IFC conversions, and external cloud platforms. By the time results arrive, your model has already progressed.</p>
+							<div class="card-tag-mono">STATUS: BREAKS FLOW STATE</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- SECTION 4: PLATFORM TABBED SHOWCASE -->
+		<section class="home-platform" id="platform">
+			<div class="container">
+				<div class="platform-header">
+					<div class="section-tag">// 03 — DUAL AGENT CAPABILITY</div>
+					<h2 class="section-heading mask-reveal">
+						<div class="line-wrap"><span>CHAT AGENT &amp;</span></div>
+						<div class="line-wrap"><span>MODEL HEALTH MONITOR.</span></div>
+					</h2>
+				</div>
+				<div class="platform-interactive-wrapper">
+					<div class="platform-tabs">
+						<button class="tab-btn active" data-tab="chat">
+							<span class="tab-dot"></span>
+							<span>01 / CHAT COPILOT</span>
+						</button>
+						<button class="tab-btn" data-tab="dashboard">
+							<span class="tab-dot"></span>
+							<span>02 / MODEL HEALTH DASHBOARD</span>
+						</button>
+					</div>
+					
+					<div class="platform-viewport">
+						<!-- Tab 1: Chat Copilot -->
+						<div class="tab-panel active" id="tab-chat">
+							<div class="panel-inner">
+								<div class="panel-mockup">
+									<img src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a66fd66235c9b3dc9658cce_b7a2ba681bb6f203cb6b6f354b9db94f_solution1.jpg" alt="Chat Assistant Solving HVAC">
+								</div>
+								<div class="panel-info">
+									<div class="info-badge">REASONING ENGINE ACTIVE</div>
+									<h3 class="panel-title">Real-Time Conversational Fixes</h3>
+									<p class="panel-desc">Ask Heron: "Why does room 204 fail corridor egress?" Heron pinpoints the doorway swing, quotes IBC 1005.1, and offers a 1-click button to adjust the wall geometry automatically.</p>
+								</div>
+							</div>
+						</div>
+
+						<!-- Tab 2: Dashboard -->
+						<div class="tab-panel" id="tab-dashboard">
+							<div class="panel-inner">
+								<div class="panel-mockup">
+									<img src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a66fd6676c8ee4725207aaa_c250d7593ed0b070d3eb6aa486953f89_solution2.avif" alt="Model Health Dashboard">
+								</div>
+								<div class="panel-info">
+									<div class="info-badge">REALTIME TELEMETRY</div>
+									<h3 class="panel-title">Unified Firm-Wide Model Health</h3>
+									<p class="panel-desc">Monitor compliance score, pending violations, and automated hours saved across Revit central models and Rhino worksets without leaving your dashboard.</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- SECTION 5: INTERACTIVE FAQ & USE CASES -->
+		<section class="home-usecase" id="why">
+			<div class="container">
+				<div class="usecase-layout">
+					<div class="usecase-left">
+						<div class="section-tag">// 04 — SPECIFICATIONS</div>
+						<h2 class="section-heading mask-reveal">
+							<div class="line-wrap"><span>FREQUENTLY</span></div>
+							<div class="line-wrap"><span>ANSWERED.</span></div>
+						</h2>
+						<div class="faq-accordion-list">
+							<div class="faq-item active" data-faq="0">
+								<div class="faq-head">
+									<span class="faq-q">Does Heron modify my model without permission?</span>
+									<span class="faq-icon">-</span>
+								</div>
+								<div class="faq-body">
+									<p>No. Heron operates in "Co-Pilot" mode by default. It highlights infractions, suggests parametric fixes, and requires explicit designer confirmation before committing geometry changes.</p>
+								</div>
+							</div>
+							<div class="faq-item" data-faq="1">
+								<div class="faq-head">
+									<span class="faq-q">What building codes are currently supported?</span>
+									<span class="faq-icon">+</span>
+								</div>
+								<div class="faq-body">
+									<p>Full International Building Code (IBC 2018/2021/2024), ADA Accessibility Guidelines, NFPA 101 Life Safety Code, and California Title 24, with firm-custom rule uploads.</p>
+								</div>
+							</div>
+							<div class="faq-item" data-faq="2">
+								<div class="faq-head">
+									<span class="faq-q">Does it work with complex custom parametric families?</span>
+									<span class="faq-icon">+</span>
+								</div>
+								<div class="faq-body">
+									<p>Yes. Heron inspects native Revit family parameters, nested curtain walls, and Rhino SubD surfaces using direct API bindings.</p>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<div class="usecase-right">
+						<div class="blueprint-spec-box">
+							<div class="spec-header">
+								<span class="spec-title">MODEL DIMENSION VALIDATOR</span>
+								<span class="spec-status">ONLINE</span>
+							</div>
+							<div class="spec-img-holder">
+								<img id="specImage" src="https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a4b5161f0d11f1602cc3c5e_Dimensions.png" alt="Dimensions Spec">
+							</div>
+							<div class="spec-meta">
+								<div class="meta-col">
+									<span class="label">SCALE:</span>
+									<span class="val">1:50 METRIC</span>
+								</div>
+								<div class="meta-col">
+									<span class="label">ACCURACY:</span>
+									<span class="val">±0.05 MM</span>
+								</div>
+								<div class="meta-col">
+									<span class="label">PARSER:</span>
+									<span class="val">AI IBC-v4</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- SECTION 6: CALL TO ACTION & FOOTER -->
+		<footer class="footer" id="contact">
+			<div class="container">
+				<div class="footer-top-grid">
+					<div class="footer-cta-box">
+						<div class="section-tag">// GET ACCESS</div>
+						<h2 class="footer-headline mask-reveal">
+							<div class="line-wrap"><span>START DESIGNING</span></div>
+							<div class="line-wrap"><span>WITH HERON TODAY.</span></div>
+						</h2>
+						<p class="footer-sub">Schedule a 20-minute live BIM demonstration tailored to your firm's standards.</p>
+						<div class="footer-form-wrapper">
+							<form class="footer-form" onsubmit="event.preventDefault(); alert('Demo request submitted!');">
+								<input class="input-email" type="email" placeholder="Enter your work email..." required>
+								<button class="btn-fill btn-brand" type="submit">
+									<span class="btn-fill-bg"></span>
+									<span class="btn-fill-label">
+										<span class="label-top">REQUEST DEMO</span>
+										<span class="label-bot">REQUEST DEMO</span>
+									</span>
+									<span class="btn-fill-icon">
+										<span class="icon-top">→</span>
+										<span class="icon-bot">→</span>
+									</span>
+								</button>
+							</form>
+						</div>
+					</div>
+				</div>
+
+				<div class="footer-bottom-bar">
+					<div class="footer-copy">© 2026 HERON AI INC. ALL RIGHTS RESERVED.</div>
+					<div class="footer-links">
+						<a href="#">PRIVACY POLICY</a>
+						<a href="#">TERMS OF SERVICE</a>
+						<a href="#">COOKIE PREFERENCES</a>
+					</div>
+				</div>
+			</div>
+		</footer>
+
+	</main>
+
+	<!-- Inlined Simulation Engine Script -->
+	<script>
+		var CONFIG = {
+			cursor: {
+				enabled: true,
+				lerp: 0.18,
+			},
+			hero: {
+				crosshairActive: true,
+				violationPulse: true,
+				violationPulseSpeed: 1.8,
+				showProjectionLines: true,
+			},
+			inkMask: {
+				morphDuration: 1.6,
+				displacementScale: 100,
+				baseFrequencyX: 0.045,
+				baseFrequencyY: 0.055,
+			},
+			typography: {
+				stagger: 0.12,
+				duration: 0.85,
+				ease: 'power3.out',
+			},
+			marquee: {
+				speed: 24,
+			},
+			dev: {
+				wireframeMode: false,
+				exportConfig: function () {
+					console.log('--- CURRENT HERON MOTION CONFIG ---');
+					console.log(JSON.stringify(CONFIG, null, 2));
+					alert('Config exported to developer console (F12)');
+				},
+			},
+		};
+
+		var CursorModule = {
+			pos: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+			target: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+			$cursor: null,
+
+			init: function () {
+				this.$cursor = $('.cursor-wrapper');
+				if (!this.$cursor.length) return;
+
+				var self = this;
+				$(window).on('mousemove', function (e) {
+					self.target.x = e.clientX;
+					self.target.y = e.clientY;
+				});
+
+				$('a, button, .violation-marker, .problem-card, .tab-btn, .faq-item').on(
+					'mouseenter',
+					function () {
+						self.$cursor.find('.cursor-dot').css({
+							transform: 'translate(-50%, -50%) scale(2.2)',
+							backgroundColor: 'var(--cl-primary)',
+						});
+						self.$cursor.find('.cursor-crosshair').css({
+							transform: 'translate(-50%, -50%) scale(1.4) rotate(45deg)',
+							opacity: 0.9,
+						});
+					}
+				);
+
+				$('a, button, .violation-marker, .problem-card, .tab-btn, .faq-item').on(
+					'mouseleave',
+					function () {
+						self.$cursor.find('.cursor-dot').css({
+							transform: 'translate(-50%, -50%) scale(1)',
+							backgroundColor: 'var(--cl-brand)',
+						});
+						self.$cursor.find('.cursor-crosshair').css({
+							transform: 'translate(-50%, -50%) scale(1) rotate(0deg)',
+							opacity: 0.6,
+						});
+					}
+				);
+
+				this.loop();
+			},
+
+			loop: function () {
+				var self = this;
+				var cursorEl = self.$cursor[0];
+				function tick() {
+					if (CONFIG.cursor.enabled && cursorEl) {
+						self.pos.x += (self.target.x - self.pos.x) * CONFIG.cursor.lerp;
+						self.pos.y += (self.target.y - self.pos.y) * CONFIG.cursor.lerp;
+						cursorEl.style.transform = 'translate3d(' + self.pos.x + 'px, ' + self.pos.y + 'px, 0)';
+					}
+					requestAnimationFrame(tick);
+				}
+				requestAnimationFrame(tick);
+			},
+		};
+
+		var HeroModule = {
+			$area: null,
+			$lineH: null,
+			$lineV: null,
+			$tracker: null,
+			$coordX: null,
+			$coordY: null,
+			isDragging: false,
+
+			init: function () {
+				this.$area = $('#heroCanvasArea');
+				if (!this.$area.length) return;
+
+				this.$lineH = $('#cursorLineH');
+				this.$lineV = $('#cursorLineV');
+				this.$tracker = $('#cursorTracker');
+				this.$coordX = $('#coordX');
+				this.$coordY = $('#coordY');
+
+				var self = this;
+
+				this.$area.on('mousemove', function (e) {
+					if (!CONFIG.hero.crosshairActive) return;
+
+					var offset = self.$area.offset();
+					var width = self.$area.width();
+					var height = self.$area.height();
+
+					var relX = Math.round(e.pageX - offset.left);
+					var relY = Math.round(e.pageY - offset.top);
+
+					relX = Math.max(0, Math.min(width, relX));
+					relY = Math.max(0, Math.min(height, relY));
+
+					self.$lineH.css('top', relY + 'px');
+					self.$lineV.css('left', relX + 'px');
+					self.$tracker.css({
+						left: relX + 'px',
+						top: relY + 'px',
+					});
+
+					var archX = Math.round((relX / width) * 1920);
+					var archY = Math.round((relY / height) * 1080);
+
+					self.$coordX.text(archX);
+					self.$coordY.text(archY);
+				});
+
+				this.$area.on('mouseenter', function () {
+					self.$lineH.stop().fadeIn(150);
+					self.$lineV.stop().fadeIn(150);
+					self.$tracker.stop().fadeIn(150);
+				});
+
+				this.$area.on('mouseleave', function () {
+					self.$lineH.stop().fadeOut(200);
+					self.$lineV.stop().fadeOut(200);
+					self.$tracker.stop().fadeOut(200);
+				});
+
+				this.$area.on('mousedown', function () {
+					self.isDragging = true;
+					$('.violation-marker').addClass('highlight');
+					gsap.to('.violation-card', {
+						scale: 1.08,
+						duration: 0.25,
+						boxShadow: '0 8px 24px rgba(250, 54, 0, 0.25)',
+					});
+				});
+
+				$(window).on('mouseup', function () {
+					if (self.isDragging) {
+						self.isDragging = false;
+						$('.violation-marker').removeClass('highlight');
+						gsap.to('.violation-card', {
+							scale: 1,
+							duration: 0.25,
+							boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+						});
+					}
+				});
+
+				$('.violation-marker').on('click', function (e) {
+					e.stopPropagation();
+					gsap.fromTo(
+						$(this).find('.violation-card'),
+						{ scale: 0.9, y: 10 },
+						{ scale: 1, y: 0, duration: 0.35, ease: 'back.out(2)' }
+					);
+				});
+			},
+		};
+
+		var InkMaskModule = {
+			timeline: null,
+
+			init: function () {
+				var $maskPath = $('.ink-path-morph');
+				if (!$maskPath.length) return;
+
+				var startD = 'M 0 1 Q 500 2 1000 1 L 1000 0 L 0 0 Z';
+				var endD = 'M 0 1000 Q 500 1250 1000 1000 L 1000 0 L 0 0 Z';
+
+				if (window.ScrollTrigger) {
+					this.timeline = gsap.timeline({
+						scrollTrigger: {
+							trigger: '#inkMaskContainer',
+							start: 'top 75%',
+							end: 'bottom 40%',
+							scrub: 1.2,
+						},
+					});
+
+					this.timeline.fromTo(
+						$maskPath[0],
+						{ attr: { d: startD } },
+						{
+							attr: { d: endD },
+							duration: CONFIG.inkMask.morphDuration,
+							ease: 'power2.inOut',
+						}
+					);
+				}
+
+				$('#inkMaskContainer').on('mouseenter', function () {
+					gsap.to($maskPath[0], {
+						attr: { d: endD },
+						duration: 0.8,
+						ease: 'power3.out',
+						overwrite: 'auto',
+					});
+				});
+
+				$('#inkMaskContainer').on('mouseleave', function () {
+					if (window.ScrollTrigger && !ScrollTrigger.isInViewport('#inkMaskContainer')) {
+						gsap.to($maskPath[0], {
+							attr: { d: startD },
+							duration: 0.8,
+							ease: 'power3.in',
+							overwrite: 'auto',
+						});
+					}
+				});
+			},
+
+			updateFilter: function () {
+				var $filter = $('#sharedDisplacementFilter');
+				if (!$filter.length) return;
+
+				$filter.find('feTurbulence').attr({
+					baseFrequency:
+						CONFIG.inkMask.baseFrequencyX + ' ' + CONFIG.inkMask.baseFrequencyY,
+				});
+				$filter
+					.find('feDisplacementMap')
+					.attr('scale', CONFIG.inkMask.displacementScale);
+			},
+		};
+
+		var TypographyModule = {
+			init: function () {
+				var $reveals = $('.mask-reveal');
+				if (!$reveals.length) return;
+
+				// Immediately reveal hero elements on load
+				$('.home-hero .mask-reveal').addClass('is-revealed');
+
+				if (window.IntersectionObserver) {
+					var observer = new IntersectionObserver(
+						function (entries) {
+							entries.forEach(function (entry) {
+								if (entry.isIntersecting) {
+									$(entry.target).addClass('is-revealed');
+								}
+							});
+						},
+						{ threshold: 0.1 }
+					);
+
+					$reveals.each(function () {
+						observer.observe(this);
+					});
+				} else {
+					$reveals.addClass('is-revealed');
+				}
+			},
+		};
+
+		var PlatformModule = {
+			init: function () {
+				var $tabs = $('.tab-btn');
+				var $panels = $('.tab-panel');
+
+				$tabs.on('click', function () {
+					var targetTab = $(this).data('tab');
+
+					$tabs.removeClass('active');
+					$(this).addClass('active');
+
+					$panels.removeClass('active');
+					var $targetPanel = $('#tab-' + targetTab);
+
+					$targetPanel.addClass('active');
+
+					gsap.fromTo(
+						$targetPanel.find('.panel-mockup'),
+						{ y: 24, opacity: 0 },
+						{ y: 0, opacity: 1, duration: 0.5, ease: 'power2.out' }
+					);
+					gsap.fromTo(
+						$targetPanel.find('.panel-info'),
+						{ x: 20, opacity: 0 },
+						{ x: 0, opacity: 1, duration: 0.5, delay: 0.1, ease: 'power2.out' }
+					);
+				});
+			},
+		};
+
+		var FaqModule = {
+			images: [
+				'https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a4b5161f0d11f1602cc3c5e_Dimensions.png',
+				'https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a4b5161f0d11f1602cc3c77_kk.png',
+				'https://heronaiapp.com/cdn.prod.website-files.com/6a4b5161f0d11f1602cc3bbf/6a4b5161f0d11f1602cc3c84_fff.png',
+			],
+
+			init: function () {
+				var self = this;
+				var $items = $('.faq-item');
+				var $img = $('#specImage');
+
+				$items.on('click', function () {
+					var index = $(this).data('faq');
+
+					if ($(this).hasClass('active')) {
+						$(this).removeClass('active');
+						$(this).find('.faq-icon').text('+');
+					} else {
+						$items.removeClass('active');
+						$items.find('.faq-icon').text('+');
+
+						$(this).addClass('active');
+						$(this).find('.faq-icon').text('-');
+
+						if ($img.length && self.images[index]) {
+							gsap.to($img, {
+								opacity: 0,
+								scale: 0.96,
+								duration: 0.2,
+								onComplete: function () {
+									$img.attr('src', self.images[index]);
+									gsap.to($img, {
+										opacity: 1,
+										scale: 1,
+										duration: 0.35,
+										ease: 'power2.out',
+									});
+								},
+							});
+						}
+					}
+				});
+			},
+		};
+
+		var ProblemModule = {
+			init: function () {
+				var $cards = $('.problem-card');
+				$cards.on('mouseenter', function () {
+					$cards.removeClass('active');
+					$(this).addClass('active');
+				});
+			},
+		};
+
+		var GuiModule = {
+			gui: null,
+
+			init: function () {
+				if (typeof lil === 'undefined' || !lil.GUI) return;
+
+				this.gui = new lil.GUI({ title: 'Heron AI Motion Controller' });
+
+				var heroFolder = this.gui.addFolder('Hero & Blueprint');
+				heroFolder.add(CONFIG.hero, 'crosshairActive').name('Track Mouse Guides');
+				heroFolder
+					.add(CONFIG.hero, 'violationPulse')
+					.name('Pulse Violations')
+					.onChange(function (val) {
+						if (val) {
+							$('.pulsing-dot').css('animation-play-state', 'running');
+						} else {
+							$('.pulsing-dot').css('animation-play-state', 'paused');
+						}
+					});
+				heroFolder
+					.add(CONFIG.hero, 'showProjectionLines')
+					.name('Projection Lines')
+					.onChange(function (val) {
+						$('.proj-line').toggle(val);
+					});
+
+				var inkFolder = this.gui.addFolder('Organic Ink Mask');
+				inkFolder
+					.add(CONFIG.inkMask, 'displacementScale', 20, 250, 5)
+					.name('Filter Distortion')
+					.onChange(function () {
+						InkMaskModule.updateFilter();
+					});
+				inkFolder
+					.add(CONFIG.inkMask, 'baseFrequencyX', 0.01, 0.2, 0.005)
+					.name('Turbulence X')
+					.onChange(function () {
+						InkMaskModule.updateFilter();
+					});
+
+				var motionFolder = this.gui.addFolder('Marquee & Timing');
+				motionFolder
+					.add(CONFIG.marquee, 'speed', 6, 60, 1)
+					.name('CAD Marquee (s)')
+					.onChange(function (val) {
+						$('.marquee-content').css('animation-duration', val + 's');
+					});
+				motionFolder
+					.add(CONFIG.cursor, 'lerp', 0.05, 0.5, 0.01)
+					.name('Cursor Smoothness');
+
+				var devFolder = this.gui.addFolder('Developer / Dev');
+				devFolder
+					.add(CONFIG.dev, 'wireframeMode')
+					.name('Inspect Grid')
+					.onChange(function (val) {
+						$('section, .home-hero-frame, .problem-card').css(
+							'outline',
+							val ? '1px dashed red' : 'none'
+						);
+					});
+				devFolder.add(CONFIG.dev, 'exportConfig').name('Export Config (Console)');
+
+				if (window.innerWidth < 768) {
+					this.gui.close();
+				}
+			},
+		};
+
+		$(document).ready(function () {
+			if (typeof Lenis !== 'undefined') {
+				var lenis = new Lenis({
+					duration: 1.1,
+					easing: function (t) {
+						return Math.min(1, 1.001 - Math.pow(2, -10 * t));
+					},
+					smoothWheel: true,
+					smoothTouch: false,
+					wheelMultiplier: 1.0,
+					touchMultiplier: 1.5,
+				});
+
+				if (window.ScrollTrigger) {
+					lenis.on('scroll', ScrollTrigger.update);
+					gsap.ticker.add(function (time) {
+						lenis.raf(time * 1000);
+					});
+					gsap.ticker.lagSmoothing(0);
+				} else {
+					function raf(time) {
+						lenis.raf(time);
+						requestAnimationFrame(raf);
+					}
+					requestAnimationFrame(raf);
+				}
+			}
+
+			CursorModule.init();
+			HeroModule.init();
+			InkMaskModule.init();
+			TypographyModule.init();
+			PlatformModule.init();
+			FaqModule.init();
+			ProblemModule.init();
+			GuiModule.init();
+		});
+	</script>
+</body>
+</html>
